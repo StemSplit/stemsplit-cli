@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/StemSplit/stemsplit-cli/internal/client"
 	"github.com/spf13/cobra"
 )
 
@@ -25,6 +26,7 @@ the StemSplit API. Get your API key at https://stemsplit.io.`,
 func Execute(version string) {
 	Version = version
 	rootCmd.Version = version
+	client.SetVersion(version)
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, colorRed+"Error:"+colorReset+" "+err.Error())
 		os.Exit(1)

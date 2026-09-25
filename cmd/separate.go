@@ -80,7 +80,7 @@ func runSeparate(cmd *cobra.Command, args []string) error {
 	spin.Suffix = fmt.Sprintf("  Uploading %s...", filename)
 	spin.Start()
 
-	if err := c.UploadFile(uploadResp.UploadURL, filePath); err != nil {
+	if err := c.UploadFile(uploadResp.UploadURL, filePath, uploadResp.ContentType); err != nil {
 		spin.Stop()
 		return fmt.Errorf("upload failed: %w", err)
 	}

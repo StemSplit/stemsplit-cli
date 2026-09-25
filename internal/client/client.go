@@ -12,17 +12,19 @@ import (
 	"time"
 )
 
-const baseURL = "https://stemsplit.io/api/v1"
+const DefaultBaseURL = "https://stemsplit.io/api/v1"
 
 // Client wraps the StemSplit HTTP API.
 type Client struct {
 	apiKey     string
+	baseURL    string
 	httpClient *http.Client
 }
 
 func New(apiKey string) *Client {
 	return &Client{
-		apiKey: apiKey,
+		apiKey:  apiKey,
+		baseURL: DefaultBaseURL,
 		httpClient: &http.Client{
 			Timeout: 60 * time.Second,
 		},
@@ -37,9 +39,10 @@ type UploadRequest struct {
 }
 
 type UploadResponse struct {
-	UploadURL string `json:"uploadUrl"`
-	UploadKey string `json:"uploadKey"`
-	ExpiresAt string `json:"expiresAt"`
+	UploadURL   string `json:"uploadUrl"`
+	UploadKey   string `json:"uploadKey"`
+	ExpiresAt   string `json:"expiresAt"`
+	ContentType string `json:"contentType"`
 }
 
 type CreateJobRequest struct {
@@ -115,7 +118,9 @@ func (c *Client) GetUploadURL(filename, contentType string) (*UploadResponse, er
 }
 
 // UploadFile sends the file bytes to the presigned URL via PUT (no auth header).
-func (c *Client) UploadFile(uploadURL, filePath string) error {
+// contentType must match the one the URL was signed with (UploadResponse.ContentType),
+// otherwise storage rejects the request with a signature mismatch.
+func (c *Client) UploadFile(uploadURL, filePath, contentType string) error {
 	f, err := os.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("cannot open file: %w", err)
@@ -132,6 +137,9 @@ func (c *Client) UploadFile(uploadURL, filePath string) error {
 		return err
 	}
 	req.ContentLength = stat.Size()
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -228,7 +236,7 @@ func (c *Client) do(method, path string, body interface{}, out interface{}) erro
 		reqBody = bytes.NewReader(data)
 	}
 
-	req, err := http.NewRequest(method, baseURL+path, reqBody)
+	req, err := http.NewRequest(method, c.baseURL+path, reqBody)
 	if err != nil {
 		return err
 	}
@@ -266,5 +274,12 @@ func (c *Client) do(method, path string, body interface{}, out interface{}) erro
 	return nil
 }
 
-// version is set at build time via ldflags.
+// version is sent in the User-Agent header; set it with SetVersion.
 var version = "dev"
+
+// SetVersion sets the CLI version reported in the User-Agent header.
+func SetVersion(v string) {
+	if v != "" {
+		version = v
+	}
+}
